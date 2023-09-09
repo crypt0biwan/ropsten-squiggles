@@ -55042,8 +55042,27 @@
 
         <!-- first setup, picking a random Squig -->
         <script>
-            const pick = Math.floor(Math.random() * txs.length)
-            const { Blockno, To, Token_ID, hash } = txs[pick]
+            let filtered_txs = txs
+
+            const params = new Proxy(new URLSearchParams(window.location.search), {
+                get: (searchParams, prop) => searchParams.get(prop),
+            })
+
+            let addressFound = false
+
+            if(params?.address) {
+                filtered_txs = txs.filter(tx => tx.To === params.address.toLowerCase())
+                
+                if(!filtered_txs.length) {
+                    console.log(`Can't find any mints for address ${params?.address}, so showing them all`)
+                    filtered_txs = txs
+                } else {
+                    addressFound = true
+                }
+            }
+
+            const pick = Math.floor(Math.random() * filtered_txs.length)
+            const { Blockno, To, Token_ID, hash } = filtered_txs[pick]
             const tokenId = parseInt(Token_ID.toString().replace('20000',''), 10)
 
             let tokenData = {
@@ -55262,6 +55281,7 @@
 
         <style type="text/css">
             body {
+                height: 100%;
                 display: grid;
                 grid-template-columns: 30% 70%;
             }
@@ -55281,11 +55301,11 @@
             }
 
             #details dt {
-                flex: 25%;
+                flex: 40%;
             }
 
             #details dd {
-                flex: 75%;
+                flex: 60%;
             }
 
             #footer { 
@@ -55322,6 +55342,10 @@
                 </select>
             </form>
 
+            <h4 id="minter_title" class="mb-3">Minter</h4>
+
+            <p id="minter"></p>
+
             <h4 class="mb-3">Details</h4>
 
             <dl id="details">
@@ -55338,9 +55362,11 @@
         <script>
             const form = document.querySelector('form')
             const select = document.querySelector('#squigs')
+            const minter = document.querySelector('#minter')
+            const minter_title = document.querySelector('#minter_title')
             const details = document.querySelector('#details')
 
-            txs.forEach(tx => {
+            filtered_txs.forEach(tx => {
                 const { Blockno, To, Token_ID, hash, traits } = tx
 
                 select.innerHTML += `<option value="${hash}" data-token-id="${Token_ID}" ${Token_ID.toString() === tokenData.tokenId ? 'selected' : ''}>Squiggle #${Token_ID.toString().replace('20000','')}</option>`
@@ -55365,9 +55391,11 @@
                 const tx = txs.filter(t => t.hash === tokenData.hash)[0]
                 const date = new Date(tx.UnixTimestamp*1000)
 
+                minter.innerHTML = `${tx.To === '0xf3860788d1597cecf938424baabe976fac87dc26' ? 'Snowfro' : tx.To}`
+                minter_title.innerHTML = addressFound ? `Minter (${filtered_txs.length} mints)` : `Minter`
+
                 details.innerHTML += `<dt>Ropsten Block</dt><dd>${numberWithCommas(tx.Blockno)}</dd>`
                 details.innerHTML += `<dt>Mint Date</dt><dd>${date.getMonth()+1}/${date.getDate()}/${date.getFullYear()} ${date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true })}</dd>`
-                details.innerHTML += `<dt>Minter</dt><dd>${tx.To === '0xf3860788d1597cecf938424baabe976fac87dc26' ? 'Snowfro' : tx.To}</dd>`
             }
 
             setDetails()
